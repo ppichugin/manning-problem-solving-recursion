@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"time"
 )
 
 // The board dimensions.
-const numRows = 8
+const numRows = 9
 const numCols = numRows
 
 // Whether we want an open or closed tour.
@@ -91,56 +92,73 @@ func findTour(board [][]int, numRows, numCols, curRow, curCol, numVisited int) b
 	numCalls++
 	board[curRow][curCol] = numVisited
 	if numVisited == numRows*numCols {
-		// We've visited every square.
 		if requireClosedTour {
-			// We need to end at a square that is one knight's move from the start.
 			for _, offset := range moveOffsets {
 				if curRow+offset.dr == 0 && curCol+offset.dc == 0 {
-					// We found a closed tour.
 					return true
 				}
 			}
-			// We didn't find a closed tour.
 			board[curRow][curCol] = unvisited
 			return false
 		}
-		// We found a tour.
 		return true
 	}
-	// Try extending the tour to each valid move.
-	// Loop through the possible moves.
-	for _, offset := range moveOffsets {
-		// Get the move.
+
+	accessibility := countAccessibility(board, numRows, numCols, curRow, curCol)
+	moves := make([]Offset, len(moveOffsets))
+	copy(moves, moveOffsets)
+
+	sort.Slice(moves, func(i, j int) bool {
+		return accessibility[i] < accessibility[j]
+	})
+
+	for _, offset := range moves {
+		r := curRow + offset.dr
+		c := curCol + offset.dc
+		if r >= 0 && r < numRows && c >= 0 && c < numCols && board[r][c] == unvisited {
+			board[r][c] = numVisited
+			if findTour(board, numRows, numCols, r, c, numVisited+1) {
+				return true
+			}
+			board[r][c] = unvisited
+		}
+	}
+	board[curRow][curCol] = unvisited
+	return false
+}
+
+// countAccessibility is a function that calculates the accessibility of each possible move for the knight.
+// The accessibility of a move is defined as the number of unvisited squares that can be reached from the target square of the move.
+func countAccessibility(board [][]int, numRows, numCols, curRow, curCol int) []int {
+	// Initialize an array to hold the accessibility of each move.
+	accessibility := make([]int, len(moveOffsets))
+
+	// Loop through each possible move.
+	for i, offset := range moveOffsets {
+		// Calculate the target square of the move.
 		r := curRow + offset.dr
 		c := curCol + offset.dc
 
-		// See if this move is on the board.
-		if r < 0 || r >= numRows {
-			continue
-		}
-		if c < 0 || c >= numCols {
-			continue
-		}
+		// Check if the move is within the board and leads to an unvisited square.
+		if r >= 0 && r < numRows && c >= 0 && c < numCols && board[r][c] == unvisited {
+			// If the move is valid, loop through each possible move from the target square.
+			for _, offset := range moveOffsets {
+				// Calculate the square that can be reached from the target square.
+				rr := r + offset.dr
+				cc := c + offset.dc
 
-		// See if we have already visited this position.
-		if board[r][c] != unvisited {
-			continue
+				// Check if the move is within the board and leads to an unvisited square.
+				if rr >= 0 && rr < numRows && cc >= 0 && cc < numCols && board[rr][cc] == unvisited {
+					// If the move is valid, increment the accessibility of the original move.
+					accessibility[i]++
+				}
+			}
+		} else {
+			// If the original move is not valid, set its accessibility to -1.
+			accessibility[i] = -1
 		}
-
-		// The move to [r][c] is viable.
-		// Make this move.
-		board[r][c] = numVisited
-
-		// Try to find the rest of a tour.
-		// If we succeed, return true.
-		if findTour(board, numRows, numCols, r, c, numVisited+1) {
-			return true
-		}
-
-		// We did not find a tour with this move. Unmake this move.
-		board[r][c] = unvisited
 	}
-	// Backtrack.
-	board[curRow][curCol] = unvisited
-	return false
+
+	// Return the array of accessibility values.
+	return accessibility
 }
