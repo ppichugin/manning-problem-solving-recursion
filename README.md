@@ -7,7 +7,7 @@
 1. ✅ Factorials
 2. ✅ Fibonacci numbers
 3. ✅ Dynamic Fibonacci numbers
-4.   The Knight's tour
+4. ✅ The Knight's tour (var1, var2)
 5. The N-Queens problem
 6. The N-Queens problem, Redux
 7. The Tower of Hanoi
